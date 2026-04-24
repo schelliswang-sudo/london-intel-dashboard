@@ -256,12 +256,51 @@ def load_raw_data():
 
 @st.cache_data(ttl=3600)
 def load_geojson():
-    url = "https://raw.githubusercontent.com/radoi-razvan-mihai/geojson-maps/main/great-britain/london.geojson"
-    try:
-        r = requests.get(url, timeout=10)
-        return r.json()
-    except:
-        return None
+    urls = [
+        "https://raw.githubusercontent.com/martinjc/UK-GeoJSON/master/json/administrative/eng/topo_lad.json",
+        "https://services1.arcgis.com/ESMARspQHYMw9BZ9/arcgis/rest/services/London_Boroughs/FeatureServer/0/query?outFields=*&where=1%3D1&f=geojson",
+    ]
+    for url in urls:
+        try:
+            r = requests.get(url, timeout=15)
+            if r.status_code == 200:
+                return r.json()
+        except:
+            continue
+    return {"type":"FeatureCollection","features":[
+        {"type":"Feature","properties":{"name":"Westminster"},"geometry":{"type":"Polygon","coordinates":[[[-0.210,51.480],[-0.100,51.480],[-0.100,51.530],[-0.210,51.530],[-0.210,51.480]]]}},
+        {"type":"Feature","properties":{"name":"Camden"},"geometry":{"type":"Polygon","coordinates":[[[-0.210,51.530],[-0.100,51.530],[-0.100,51.580],[-0.210,51.580],[-0.210,51.530]]]}},
+        {"type":"Feature","properties":{"name":"Islington"},"geometry":{"type":"Polygon","coordinates":[[[-0.120,51.530],[-0.040,51.530],[-0.040,51.570],[-0.120,51.570],[-0.120,51.530]]]}},
+        {"type":"Feature","properties":{"name":"Hackney"},"geometry":{"type":"Polygon","coordinates":[[[-0.080,51.530],[0.000,51.530],[0.000,51.580],[-0.080,51.580],[-0.080,51.530]]]}},
+        {"type":"Feature","properties":{"name":"Tower Hamlets"},"geometry":{"type":"Polygon","coordinates":[[[-0.050,51.490],[0.020,51.490],[0.020,51.530],[-0.050,51.530],[-0.050,51.490]]]}},
+        {"type":"Feature","properties":{"name":"Southwark"},"geometry":{"type":"Polygon","coordinates":[[[-0.100,51.460],[-0.020,51.460],[-0.020,51.500],[-0.100,51.500],[-0.100,51.460]]]}},
+        {"type":"Feature","properties":{"name":"Lambeth"},"geometry":{"type":"Polygon","coordinates":[[[-0.140,51.450],[-0.070,51.450],[-0.070,51.490],[-0.140,51.490],[-0.140,51.450]]]}},
+        {"type":"Feature","properties":{"name":"Lewisham"},"geometry":{"type":"Polygon","coordinates":[[[-0.040,51.440],[0.020,51.440],[0.020,51.480],[-0.040,51.480],[-0.040,51.440]]]}},
+        {"type":"Feature","properties":{"name":"Brent"},"geometry":{"type":"Polygon","coordinates":[[[-0.300,51.530],[-0.210,51.530],[-0.210,51.580],[-0.300,51.580],[-0.300,51.530]]]}},
+        {"type":"Feature","properties":{"name":"Ealing"},"geometry":{"type":"Polygon","coordinates":[[[-0.380,51.490],[-0.280,51.490],[-0.280,51.540],[-0.380,51.540],[-0.380,51.490]]]}},
+        {"type":"Feature","properties":{"name":"Hounslow"},"geometry":{"type":"Polygon","coordinates":[[[-0.420,51.450],[-0.300,51.450],[-0.300,51.500],[-0.420,51.500],[-0.420,51.450]]]}},
+        {"type":"Feature","properties":{"name":"Hammersmith and Fulham"},"geometry":{"type":"Polygon","coordinates":[[[-0.250,51.470],[-0.180,51.470],[-0.180,51.510],[-0.250,51.510],[-0.250,51.470]]]}},
+        {"type":"Feature","properties":{"name":"Haringey"},"geometry":{"type":"Polygon","coordinates":[[[-0.150,51.570],[-0.050,51.570],[-0.050,51.610],[-0.150,51.610],[-0.150,51.570]]]}},
+        {"type":"Feature","properties":{"name":"Waltham Forest"},"geometry":{"type":"Polygon","coordinates":[[[-0.030,51.560],[0.020,51.560],[0.020,51.620],[-0.030,51.620],[-0.030,51.560]]]}},
+        {"type":"Feature","properties":{"name":"Croydon"},"geometry":{"type":"Polygon","coordinates":[[[-0.130,51.340],[-0.020,51.340],[-0.020,51.400],[-0.130,51.400],[-0.130,51.340]]]}},
+        {"type":"Feature","properties":{"name":"Barnet"},"geometry":{"type":"Polygon","coordinates":[[[-0.240,51.600],[-0.120,51.600],[-0.120,51.660],[-0.240,51.660],[-0.240,51.600]]]}},
+        {"type":"Feature","properties":{"name":"Enfield"},"geometry":{"type":"Polygon","coordinates":[[[-0.130,51.630],[-0.020,51.630],[-0.020,51.690],[-0.130,51.690],[-0.130,51.630]]]}},
+        {"type":"Feature","properties":{"name":"Barking and Dagenham"},"geometry":{"type":"Polygon","coordinates":[[[0.070,51.520],[0.170,51.520],[0.170,51.570],[0.070,51.570],[0.070,51.520]]]}},
+        {"type":"Feature","properties":{"name":"Havering"},"geometry":{"type":"Polygon","coordinates":[[[0.170,51.520],[0.320,51.520],[0.320,51.590],[0.170,51.590],[0.170,51.520]]]}},
+        {"type":"Feature","properties":{"name":"Redbridge"},"geometry":{"type":"Polygon","coordinates":[[[0.020,51.550],[0.100,51.550],[0.100,51.600],[0.020,51.600],[0.020,51.550]]]}},
+        {"type":"Feature","properties":{"name":"Newham"},"geometry":{"type":"Polygon","coordinates":[[[0.000,51.500],[0.070,51.500],[0.070,51.550],[0.000,51.550],[0.000,51.500]]]}},
+        {"type":"Feature","properties":{"name":"Greenwich"},"geometry":{"type":"Polygon","coordinates":[[[0.020,51.460],[0.100,51.460],[0.100,51.510],[0.020,51.510],[0.020,51.460]]]}},
+        {"type":"Feature","properties":{"name":"Bexley"},"geometry":{"type":"Polygon","coordinates":[[[0.100,51.440],[0.200,51.440],[0.200,51.500],[0.100,51.500],[0.100,51.440]]]}},
+        {"type":"Feature","properties":{"name":"Bromley"},"geometry":{"type":"Polygon","coordinates":[[[0.000,51.340],[0.120,51.340],[0.120,51.440],[0.000,51.440],[0.000,51.340]]]}},
+        {"type":"Feature","properties":{"name":"Merton"},"geometry":{"type":"Polygon","coordinates":[[[-0.220,51.390],[-0.120,51.390],[-0.120,51.440],[-0.220,51.440],[-0.220,51.390]]]}},
+        {"type":"Feature","properties":{"name":"Sutton"},"geometry":{"type":"Polygon","coordinates":[[[-0.200,51.340],[-0.120,51.340],[-0.120,51.390],[-0.200,51.390],[-0.200,51.340]]]}},
+        {"type":"Feature","properties":{"name":"Kingston upon Thames"},"geometry":{"type":"Polygon","coordinates":[[[-0.320,51.380],[-0.220,51.380],[-0.220,51.440],[-0.320,51.440],[-0.320,51.380]]]}},
+        {"type":"Feature","properties":{"name":"Richmond upon Thames"},"geometry":{"type":"Polygon","coordinates":[[[-0.380,51.430],[-0.280,51.430],[-0.280,51.490],[-0.380,51.490],[-0.380,51.430]]]}},
+        {"type":"Feature","properties":{"name":"Wandsworth"},"geometry":{"type":"Polygon","coordinates":[[[-0.220,51.440],[-0.140,51.440],[-0.140,51.480],[-0.220,51.480],[-0.220,51.440]]]}},
+        {"type":"Feature","properties":{"name":"Kensington and Chelsea"},"geometry":{"type":"Polygon","coordinates":[[[-0.210,51.480],[-0.160,51.480],[-0.160,51.520],[-0.210,51.520],[-0.210,51.480]]]}},
+        {"type":"Feature","properties":{"name":"Hillingdon"},"geometry":{"type":"Polygon","coordinates":[[[-0.500,51.480],[-0.380,51.480],[-0.380,51.570],[-0.500,51.570],[-0.500,51.480]]]}},
+        {"type":"Feature","properties":{"name":"Harrow"},"geometry":{"type":"Polygon","coordinates":[[[-0.380,51.550],[-0.280,51.550],[-0.280,51.620],[-0.380,51.620],[-0.380,51.550]]]}},
+    ]}
 
 def is_cez(name):
     name_lower = name.lower()
