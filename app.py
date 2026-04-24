@@ -400,7 +400,8 @@ elif st.session_state.page == "map":
             scrollWheelZoom=False
         )
 
-        if geojson_data:
+        geojson_features = geojson_data.get("features", []) if geojson_data else []
+        if geojson_features:
             def style_fn(feature):
                 name = feature["properties"].get("name", feature["properties"].get("NAME", ""))
                 cez = is_cez(name)
@@ -414,12 +415,15 @@ elif st.session_state.page == "map":
             def highlight_fn(feature):
                 return {"fillOpacity": 0.9, "weight": 2, "color": "#f0ede6"}
 
+            first_props = geojson_features[0].get("properties", {})
+            tooltip_field = "name" if "name" in first_props else "NAME"
+
             folium.GeoJson(
                 geojson_data,
                 style_function=style_fn,
                 highlight_function=highlight_fn,
                 tooltip=folium.GeoJsonTooltip(
-                    fields=["name"] if "name" in geojson_data["features"][0]["properties"] else ["NAME"],
+                    fields=[tooltip_field],
                     aliases=["Borough:"],
                     style="background-color:#1a1a1a;color:#f0ede6;border:1px solid #333;font-family:DM Sans,sans-serif;font-size:13px;"
                 )
