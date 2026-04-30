@@ -2,528 +2,460 @@ import streamlit as st
 import pandas as pd
 import folium
 from streamlit_folium import st_folium
-import requests
-import json
+from datetime import datetime
 
+# ── Page config ──────────────────────────────────────────────────────────────
 st.set_page_config(
-    page_title="London Intelligence Dashboard",
-    page_icon="🗺",
+    page_title="London Intel Dashboard",
+    page_icon="🗺️",
     layout="wide",
-    initial_sidebar_state="collapsed"
+    initial_sidebar_state="collapsed",
 )
 
+# ── Global CSS ────────────────────────────────────────────────────────────────
 st.markdown("""
 <style>
-@import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Sans:wght@300;400;500&display=swap');
+  /* ── Base ── */
+  html, body, [data-testid="stAppViewContainer"] {
+      background: #0d0d0d;
+      color: #e0e0e0;
+      font-family: 'Courier New', monospace;
+  }
+  [data-testid="stHeader"] { background: transparent; }
 
-html, body, [class*="css"] {
-    font-family: 'DM Sans', sans-serif;
-}
+  /* ── Nav bar ── */
+  .nav-bar {
+      display: flex;
+      gap: 12px;
+      padding: 14px 0 18px 0;
+      border-bottom: 1px solid #2a2a2a;
+      margin-bottom: 28px;
+  }
+  .nav-btn {
+      background: #1a1a1a;
+      color: #aaa;
+      border: 1px solid #333;
+      border-radius: 6px;
+      padding: 8px 22px;
+      font-family: 'Courier New', monospace;
+      font-size: 13px;
+      letter-spacing: 0.04em;
+      cursor: pointer;
+      transition: all 0.2s;
+  }
+  .nav-btn:hover  { background: #252525; color: #fff; border-color: #555; }
+  .nav-btn.active { background: #c0392b; color: #fff; border-color: #c0392b; }
 
-.main { background: #0f0f0f; }
-[data-testid="stAppViewContainer"] { background: #0f0f0f; }
-[data-testid="stHeader"] { background: #0f0f0f; }
+  /* ── Cards ── */
+  .card {
+      background: #141414;
+      border: 1px solid #222;
+      border-radius: 8px;
+      padding: 18px 22px;
+      margin-bottom: 14px;
+  }
+  .card-title { color: #e74c3c; font-size: 14px; font-weight: bold; margin-bottom: 6px; }
+  .card-meta  { color: #666; font-size: 11px; margin-bottom: 8px; }
+  .card-body  { color: #ccc; font-size: 13px; line-height: 1.6; white-space: pre-wrap; }
 
-.dashboard-title {
-    font-family: 'DM Serif Display', serif;
-    font-size: 2rem;
-    color: #f0ede6;
-    letter-spacing: -0.02em;
-    margin-bottom: 0;
-    line-height: 1;
-}
-.dashboard-sub {
-    font-size: 0.78rem;
-    color: #666;
-    letter-spacing: 0.15em;
-    text-transform: uppercase;
-    margin-top: 4px;
-}
+  /* ── Log page ── */
+  .log-header {
+      font-size: 11px;
+      color: #555;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      margin-bottom: 6px;
+  }
+  .log-date { color: #e74c3c; font-size: 12px; font-weight: bold; }
 
-.nav-bar {
-    display: flex;
-    gap: 2px;
-    background: #1a1a1a;
-    border-radius: 8px;
-    padding: 4px;
-    margin: 1.5rem 0 1.5rem;
-    width: fit-content;
-}
-.nav-btn {
-    padding: 7px 20px;
-    border-radius: 6px;
-    font-size: 13px;
-    font-family: 'DM Sans', sans-serif;
-    font-weight: 500;
-    color: #888;
-    background: transparent;
-    border: none;
-    cursor: pointer;
-    transition: all 0.15s;
-    letter-spacing: 0.02em;
-}
-.nav-btn.active {
-    background: #f0ede6;
-    color: #0f0f0f;
-}
+  .badge {
+      display: inline-block;
+      border-radius: 4px;
+      padding: 2px 9px;
+      font-size: 11px;
+      font-weight: bold;
+      letter-spacing: 0.06em;
+      margin-right: 6px;
+  }
+  .badge-Progress    { background:#1a3a2a; color:#2ecc71; border:1px solid #2ecc71; }
+  .badge-Next\ Steps { background:#1a2a3a; color:#3498db; border:1px solid #3498db; }
+  .badge-Meeting     { background:#3a1a2a; color:#e91e8c; border:1px solid #e91e8c; }
+  .badge-Network     { background:#2a2a1a; color:#f39c12; border:1px solid #f39c12; }
+  .badge-Note        { background:#2a2a2a; color:#aaa;    border:1px solid #555;    }
 
-.stat-card {
-    background: #1a1a1a;
-    border: 0.5px solid #2a2a2a;
-    border-radius: 10px;
-    padding: 16px 20px;
-    margin-bottom: 8px;
-}
-.stat-label { font-size: 11px; color: #555; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 4px; }
-.stat-value { font-size: 28px; font-weight: 300; color: #f0ede6; }
+  /* ── Password box ── */
+  .pw-wrap {
+      max-width: 380px;
+      margin: 80px auto;
+      background: #111;
+      border: 1px solid #c0392b44;
+      border-radius: 10px;
+      padding: 40px 36px;
+      text-align: center;
+  }
+  .pw-title { color:#e74c3c; font-size:16px; letter-spacing:0.1em; margin-bottom:24px; }
 
-.doc-card {
-    background: #141414;
-    border: 0.5px solid #222;
-    border-radius: 10px;
-    padding: 18px 20px;
-    margin-bottom: 10px;
-    transition: border-color 0.2s;
-}
-.doc-card:hover { border-color: #444; }
-.doc-title { font-size: 14px; font-weight: 500; color: #f0ede6; margin-bottom: 6px; line-height: 1.4; }
-.doc-meta { font-size: 11px; color: #555; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 8px; }
-.doc-summary { font-size: 13px; color: #888; line-height: 1.6; margin-bottom: 10px; }
-.doc-link { font-size: 12px; color: #c8a96e; text-decoration: none; }
-
-.intel-card {
-    background: #141414;
-    border: 0.5px solid #222;
-    border-left: 2px solid #c84b4b;
-    border-radius: 0 8px 8px 0;
-    padding: 14px 16px;
-    margin-bottom: 8px;
-}
-.intel-card.non-cez { border-left-color: #444; }
-.intel-text { font-size: 13px; color: #aaa; line-height: 1.6; }
-.intel-date { font-size: 11px; color: #444; margin-top: 6px; }
-
-.badge-cez {
-    display: inline-block;
-    background: #3d1a1a;
-    color: #e07070;
-    font-size: 10px;
-    font-weight: 500;
-    padding: 2px 8px;
-    border-radius: 3px;
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-    margin-left: 8px;
-}
-.badge-non {
-    display: inline-block;
-    background: #1e1e1e;
-    color: #555;
-    font-size: 10px;
-    font-weight: 500;
-    padding: 2px 8px;
-    border-radius: 3px;
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-    margin-left: 8px;
-}
-
-.raw-card {
-    background: #141414;
-    border: 0.5px solid #222;
-    border-radius: 8px;
-    padding: 14px 16px;
-    margin-bottom: 8px;
-}
-.raw-title { font-size: 13px; font-weight: 500; color: #ccc; margin-bottom: 4px; }
-.raw-snippet { font-size: 12px; color: #666; line-height: 1.5; }
-.raw-meta { font-size: 11px; color: #444; margin-top: 6px; }
-.status-pending {
-    display: inline-block;
-    background: #1e2a1e;
-    color: #5a8a5a;
-    font-size: 10px;
-    padding: 2px 7px;
-    border-radius: 3px;
-    letter-spacing: 0.08em;
-}
-
-.section-label {
-    font-size: 11px;
-    color: #444;
-    text-transform: uppercase;
-    letter-spacing: 0.12em;
-    margin-bottom: 12px;
-    padding-bottom: 8px;
-    border-bottom: 0.5px solid #1e1e1e;
-}
-
-div[data-testid="stButton"] button {
-    background: #1a1a1a !important;
-    color: #888 !important;
-    border: 0.5px solid #2a2a2a !important;
-    border-radius: 6px !important;
-    font-family: 'DM Sans', sans-serif !important;
-    font-size: 12px !important;
-    font-weight: 500 !important;
-    letter-spacing: 0.05em !important;
-    padding: 6px 16px !important;
-    transition: all 0.15s !important;
-}
-div[data-testid="stButton"] button:hover {
-    border-color: #444 !important;
-    color: #ccc !important;
-}
-
-.stSelectbox > div { background: #1a1a1a !important; }
+  /* ── Policy tag ── */
+  .policy-tag {
+      display:inline-block; background:#1a1a3a; color:#7878dd;
+      border:1px solid #3a3a6a; border-radius:4px;
+      padding:2px 8px; font-size:11px; margin:2px 3px;
+  }
+  /* ── Divider ── */
+  hr.log-div { border:none; border-top:1px solid #1e1e1e; margin:6px 0 16px 0; }
 </style>
 """, unsafe_allow_html=True)
 
-SHEET_ID = "1uu3LhIMNhDRVDZw6ldpX5FAQ8wb2j-5-zTGoOX11dqE"
-SHEETS = {
-    "borough": "711933115",
-    "policy": "0",
-    "raw": "1234567890"
+# ── Google Sheet URLs ─────────────────────────────────────────────────────────
+SHEET_ID = "1xtKPKJEJi8JzKXsLF4qj6LzVDJNy3mJoSQCGPkakArg"   # ← replace if needed
+
+def sheet_url(tab: str) -> str:
+    return (
+        f"https://docs.google.com/spreadsheets/d/{SHEET_ID}"
+        f"/gviz/tq?tqx=out:csv&sheet={tab}"
+    )
+
+@st.cache_data(ttl=300)
+def load_sheet(tab: str) -> pd.DataFrame:
+    try:
+        return pd.read_csv(sheet_url(tab))
+    except Exception as e:
+        st.error(f"Could not load sheet '{tab}': {e}")
+        return pd.DataFrame()
+
+# ── Session state bootstrap ───────────────────────────────────────────────────
+for key, default in {
+    "page": "policy",
+    "raw_clicks": 0,
+    "last_raw_click": 0.0,
+    "show_pw": False,
+    "log_unlocked": False,
+    "pw_error": False,
+}.items():
+    if key not in st.session_state:
+        st.session_state[key] = default
+
+# ── CEZ borough data ──────────────────────────────────────────────────────────
+CEZ_BOROUGHS = {
+    "Hammersmith & Fulham": {
+        "coords": [51.4927, -0.2339],
+        "cez": True,
+        "intel": "H&F Creative Enterprise Zone — Affordable Workspace policy active. "
+                 "Contact: Richard Miller (H&F Council). Retrofit Fund available.",
+        "focus": True,
+    },
+    "Hackney": {
+        "coords": [51.5450, -0.0553],
+        "cez": True,
+        "intel": "Hackney Wick & Fish Island CEZ. Strong artist studio ecosystem. "
+                 "SPACE Studios, Stour Space active operators.",
+        "focus": True,
+    },
+    "Lambeth": {
+        "coords": [51.4607, -0.1163],
+        "cez": True,
+        "intel": "Brixton CEZ. Pop Brixton model. Council supportive of meanwhile-use.",
+        "focus": True,
+    },
+    "Westminster": {
+        "coords": [51.4973, -0.1372],
+        "cez": False,
+        "intel": "North Paddington — not a formal CEZ but affordable workspace clauses "
+                 "in some planning permissions.",
+        "focus": True,
+    },
+    "Tower Hamlets": {
+        "coords": [51.5099, -0.0059],
+        "cez": True,
+        "intel": "Whitechapel & Poplar CEZ. Good transport links.",
+        "focus": False,
+    },
+    "Southwark": {
+        "coords": [51.4979, -0.0820],
+        "cez": True,
+        "intel": "Bermondsey / Old Kent Road CEZ. Significant regeneration underway.",
+        "focus": False,
+    },
 }
 
-CEZ_BOROUGHS = [
-    "Brent", "Croydon", "Ealing", "Hackney", "Tower Hamlets",
-    "Hammersmith and Fulham", "Hammersmith & Fulham",
-    "Haringey", "Hounslow", "Islington", "Lambeth",
-    "Lewisham", "Waltham Forest", "Westminster"
-]
-
-@st.cache_data(ttl=300)
-def load_borough_data():
-    try:
-        url = f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/export?format=csv&gid=711933115"
-        df = pd.read_csv(url)
-        return df
-    except:
-        return pd.DataFrame({
-            "Borough": ["Brent","Croydon","Ealing","Hackney & Tower Hamlets",
-                        "Hammersmith & Fulham","Haringey","Hounslow","Islington",
-                        "Lambeth","Lewisham","Waltham Forest","Westminster"],
-            "Policy_Status": ["CEZ"]*12,
-            "Intelligence": [""]*12,
-            "Link": [""]*12,
-            "Update_Date": [""]*12
-        })
-
-@st.cache_data(ttl=300)
-def load_policy_data():
-    try:
-        url = f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/export?format=csv&gid=0"
-        df = pd.read_csv(url)
-        return df
-    except:
-        return pd.DataFrame({
-            "Borough": ["The Great London", "The Great London", "The Great London"],
-            "Document_Title": [
-                "CREATIVE ENTERPRISE ZONES | London (2017)",
-                "Mayor's boost for London's Creative Enterprise Zones with further £2.2 million (2026)",
-                "Creative Enterprise Zone Impact Report 2018-2021"
-            ],
-            "Category": ["CEZ政策", "CEZ/2026", "CEZ Impact Report"],
-            "Summary": [
-                "This is the foundational policy document that introduces the concept of Creative Enterprise Zones (CEZs) in London.",
-                "Latest official announcement detailing a new £2.2 million funding injection from the Mayor of London.",
-                "Comprehensive evaluation report reviewing the real-world impact and performance of the first six pioneer CEZs."
-            ],
-            "Link": [
-                "https://www.london.gov.uk/sites/default/files/creative-enterprise-zones_prospectus-2017.pdf",
-                "https://www.london.gov.uk/mayors-boost-londons-creative-enterprise-zones-further-ps22-million-reverse-decline-artist-studios",
-                "https://www.london.gov.uk/programmes-strategies/arts-and-culture/space-culture/creative-enterprise-zones/about-creative-enterprise-zones"
-            ],
-            "Upload_Date": ["2024-01-15", "2024-02-01", ""]
-        })
-
-@st.cache_data(ttl=300)
-def load_raw_data():
-    try:
-        url = f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/export?format=csv&gid=raw"
-        df = pd.read_csv(url)
-        return df
-    except:
-        return pd.DataFrame({
-            "Borough": ["Camden"],
-            "Source_URL": ["https://..."],
-            "Title": ["New parking consultation"],
-            "Snippet": ["摘要内容..."],
-            "Scraped_Date": ["2024-03-10"],
-            "Status": ["待阅"]
-        })
-
-@st.cache_data(ttl=3600)
-def load_geojson():
-    import os, json as _json
-    geojson_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "london_boroughs.geojson")
-    if os.path.exists(geojson_path):
-        with open(geojson_path) as f:
-            return _json.load(f)
-    urls = [
-        "https://raw.githubusercontent.com/martinjc/UK-GeoJSON/master/json/administrative/eng/topo_lad.json",
-    ]
-    for url in urls:
-        try:
-            r = requests.get(url, timeout=15)
-            if r.status_code == 200:
-                return r.json()
-        except:
-            continue
-    return {"type":"FeatureCollection","features":[
-        {"type":"Feature","properties":{"name":"Westminster"},"geometry":{"type":"Polygon","coordinates":[[[-0.210,51.480],[-0.100,51.480],[-0.100,51.530],[-0.210,51.530],[-0.210,51.480]]]}},
-        {"type":"Feature","properties":{"name":"Camden"},"geometry":{"type":"Polygon","coordinates":[[[-0.210,51.530],[-0.100,51.530],[-0.100,51.580],[-0.210,51.580],[-0.210,51.530]]]}},
-        {"type":"Feature","properties":{"name":"Islington"},"geometry":{"type":"Polygon","coordinates":[[[-0.120,51.530],[-0.040,51.530],[-0.040,51.570],[-0.120,51.570],[-0.120,51.530]]]}},
-        {"type":"Feature","properties":{"name":"Hackney"},"geometry":{"type":"Polygon","coordinates":[[[-0.080,51.530],[0.000,51.530],[0.000,51.580],[-0.080,51.580],[-0.080,51.530]]]}},
-        {"type":"Feature","properties":{"name":"Tower Hamlets"},"geometry":{"type":"Polygon","coordinates":[[[-0.050,51.490],[0.020,51.490],[0.020,51.530],[-0.050,51.530],[-0.050,51.490]]]}},
-        {"type":"Feature","properties":{"name":"Southwark"},"geometry":{"type":"Polygon","coordinates":[[[-0.100,51.460],[-0.020,51.460],[-0.020,51.500],[-0.100,51.500],[-0.100,51.460]]]}},
-        {"type":"Feature","properties":{"name":"Lambeth"},"geometry":{"type":"Polygon","coordinates":[[[-0.140,51.450],[-0.070,51.450],[-0.070,51.490],[-0.140,51.490],[-0.140,51.450]]]}},
-        {"type":"Feature","properties":{"name":"Lewisham"},"geometry":{"type":"Polygon","coordinates":[[[-0.040,51.440],[0.020,51.440],[0.020,51.480],[-0.040,51.480],[-0.040,51.440]]]}},
-        {"type":"Feature","properties":{"name":"Brent"},"geometry":{"type":"Polygon","coordinates":[[[-0.300,51.530],[-0.210,51.530],[-0.210,51.580],[-0.300,51.580],[-0.300,51.530]]]}},
-        {"type":"Feature","properties":{"name":"Ealing"},"geometry":{"type":"Polygon","coordinates":[[[-0.380,51.490],[-0.280,51.490],[-0.280,51.540],[-0.380,51.540],[-0.380,51.490]]]}},
-        {"type":"Feature","properties":{"name":"Hounslow"},"geometry":{"type":"Polygon","coordinates":[[[-0.420,51.450],[-0.300,51.450],[-0.300,51.500],[-0.420,51.500],[-0.420,51.450]]]}},
-        {"type":"Feature","properties":{"name":"Hammersmith and Fulham"},"geometry":{"type":"Polygon","coordinates":[[[-0.250,51.470],[-0.180,51.470],[-0.180,51.510],[-0.250,51.510],[-0.250,51.470]]]}},
-        {"type":"Feature","properties":{"name":"Haringey"},"geometry":{"type":"Polygon","coordinates":[[[-0.150,51.570],[-0.050,51.570],[-0.050,51.610],[-0.150,51.610],[-0.150,51.570]]]}},
-        {"type":"Feature","properties":{"name":"Waltham Forest"},"geometry":{"type":"Polygon","coordinates":[[[-0.030,51.560],[0.020,51.560],[0.020,51.620],[-0.030,51.620],[-0.030,51.560]]]}},
-        {"type":"Feature","properties":{"name":"Croydon"},"geometry":{"type":"Polygon","coordinates":[[[-0.130,51.340],[-0.020,51.340],[-0.020,51.400],[-0.130,51.400],[-0.130,51.340]]]}},
-        {"type":"Feature","properties":{"name":"Barnet"},"geometry":{"type":"Polygon","coordinates":[[[-0.240,51.600],[-0.120,51.600],[-0.120,51.660],[-0.240,51.660],[-0.240,51.600]]]}},
-        {"type":"Feature","properties":{"name":"Enfield"},"geometry":{"type":"Polygon","coordinates":[[[-0.130,51.630],[-0.020,51.630],[-0.020,51.690],[-0.130,51.690],[-0.130,51.630]]]}},
-        {"type":"Feature","properties":{"name":"Barking and Dagenham"},"geometry":{"type":"Polygon","coordinates":[[[0.070,51.520],[0.170,51.520],[0.170,51.570],[0.070,51.570],[0.070,51.520]]]}},
-        {"type":"Feature","properties":{"name":"Havering"},"geometry":{"type":"Polygon","coordinates":[[[0.170,51.520],[0.320,51.520],[0.320,51.590],[0.170,51.590],[0.170,51.520]]]}},
-        {"type":"Feature","properties":{"name":"Redbridge"},"geometry":{"type":"Polygon","coordinates":[[[0.020,51.550],[0.100,51.550],[0.100,51.600],[0.020,51.600],[0.020,51.550]]]}},
-        {"type":"Feature","properties":{"name":"Newham"},"geometry":{"type":"Polygon","coordinates":[[[0.000,51.500],[0.070,51.500],[0.070,51.550],[0.000,51.550],[0.000,51.500]]]}},
-        {"type":"Feature","properties":{"name":"Greenwich"},"geometry":{"type":"Polygon","coordinates":[[[0.020,51.460],[0.100,51.460],[0.100,51.510],[0.020,51.510],[0.020,51.460]]]}},
-        {"type":"Feature","properties":{"name":"Bexley"},"geometry":{"type":"Polygon","coordinates":[[[0.100,51.440],[0.200,51.440],[0.200,51.500],[0.100,51.500],[0.100,51.440]]]}},
-        {"type":"Feature","properties":{"name":"Bromley"},"geometry":{"type":"Polygon","coordinates":[[[0.000,51.340],[0.120,51.340],[0.120,51.440],[0.000,51.440],[0.000,51.340]]]}},
-        {"type":"Feature","properties":{"name":"Merton"},"geometry":{"type":"Polygon","coordinates":[[[-0.220,51.390],[-0.120,51.390],[-0.120,51.440],[-0.220,51.440],[-0.220,51.390]]]}},
-        {"type":"Feature","properties":{"name":"Sutton"},"geometry":{"type":"Polygon","coordinates":[[[-0.200,51.340],[-0.120,51.340],[-0.120,51.390],[-0.200,51.390],[-0.200,51.340]]]}},
-        {"type":"Feature","properties":{"name":"Kingston upon Thames"},"geometry":{"type":"Polygon","coordinates":[[[-0.320,51.380],[-0.220,51.380],[-0.220,51.440],[-0.320,51.440],[-0.320,51.380]]]}},
-        {"type":"Feature","properties":{"name":"Richmond upon Thames"},"geometry":{"type":"Polygon","coordinates":[[[-0.380,51.430],[-0.280,51.430],[-0.280,51.490],[-0.380,51.490],[-0.380,51.430]]]}},
-        {"type":"Feature","properties":{"name":"Wandsworth"},"geometry":{"type":"Polygon","coordinates":[[[-0.220,51.440],[-0.140,51.440],[-0.140,51.480],[-0.220,51.480],[-0.220,51.440]]]}},
-        {"type":"Feature","properties":{"name":"Kensington and Chelsea"},"geometry":{"type":"Polygon","coordinates":[[[-0.210,51.480],[-0.160,51.480],[-0.160,51.520],[-0.210,51.520],[-0.210,51.480]]]}},
-        {"type":"Feature","properties":{"name":"Hillingdon"},"geometry":{"type":"Polygon","coordinates":[[[-0.500,51.480],[-0.380,51.480],[-0.380,51.570],[-0.500,51.570],[-0.500,51.480]]]}},
-        {"type":"Feature","properties":{"name":"Harrow"},"geometry":{"type":"Polygon","coordinates":[[[-0.380,51.550],[-0.280,51.550],[-0.280,51.620],[-0.380,51.620],[-0.380,51.550]]]}},
-    ]}
-
-def is_cez(name):
-    name_lower = name.lower()
-    for b in CEZ_BOROUGHS:
-        if b.lower() in name_lower or name_lower in b.lower():
-            return True
-    return False
-
-if "page" not in st.session_state:
-    st.session_state.page = "policy"
-if "selected_borough" not in st.session_state:
-    st.session_state.selected_borough = None
-
-col_title, col_nav = st.columns([1, 2])
-
-with col_title:
-    st.markdown('<div class="dashboard-title">London Intel</div>', unsafe_allow_html=True)
-    st.markdown('<div class="dashboard-sub">Commercial Intelligence Dashboard</div>', unsafe_allow_html=True)
-
-with col_nav:
-    st.markdown("<br>", unsafe_allow_html=True)
-    c1, c2, c3, _ = st.columns([1, 1, 1, 2])
-    with c1:
-        if st.button("Policy Docs", key="nav_policy"):
-            st.session_state.page = "policy"
-    with c2:
-        if st.button("Intel Map", key="nav_map"):
-            st.session_state.page = "map"
-    with c3:
-        if st.button("Raw Feed", key="nav_raw"):
-            st.session_state.page = "raw"
-
-st.markdown("---")
-
-# ─────────────────────────────────────────────
-# PAGE 1: POLICY DOCUMENTS
-# ─────────────────────────────────────────────
-if st.session_state.page == "policy":
-    df_policy = load_policy_data()
-
-    col_stats, col_docs = st.columns([1, 3])
-
-    with col_stats:
-        st.markdown('<div class="section-label">Overview</div>', unsafe_allow_html=True)
-        st.markdown(f'<div class="stat-card"><div class="stat-label">Total Documents</div><div class="stat-value">{len(df_policy)}</div></div>', unsafe_allow_html=True)
-
-        categories = df_policy["Category"].dropna().unique() if "Category" in df_policy.columns else []
-        st.markdown(f'<div class="stat-card"><div class="stat-label">Categories</div><div class="stat-value">{len(categories)}</div></div>', unsafe_allow_html=True)
-
-        if len(categories) > 0:
-            st.markdown('<div class="section-label" style="margin-top:20px;">Filter by category</div>', unsafe_allow_html=True)
-            selected_cat = st.selectbox("", ["All"] + list(categories), label_visibility="collapsed")
-        else:
-            selected_cat = "All"
-
-    with col_docs:
-        st.markdown('<div class="section-label">Documents</div>', unsafe_allow_html=True)
-        filtered = df_policy if selected_cat == "All" else df_policy[df_policy["Category"] == selected_cat]
-
-        for _, row in filtered.iterrows():
-            title = row.get("Document_Title", "Untitled")
-            category = row.get("Category", "")
-            summary = row.get("Summary", "")
-            link = row.get("Link", "")
-            date = row.get("Upload_Date", "")
-            borough = row.get("Borough", "")
-
-            link_html = f'<a href="{link}" target="_blank" class="doc-link">View document →</a>' if pd.notna(link) and link and link != "https://..." else ""
-            date_html = f" · {date}" if pd.notna(date) and date else ""
-
-            st.markdown(f"""
-            <div class="doc-card">
-                <div class="doc-title">{title}</div>
-                <div class="doc-meta">{category}{date_html} · {borough}</div>
-                <div class="doc-summary">{summary}</div>
-                {link_html}
-            </div>
-            """, unsafe_allow_html=True)
-
-# ─────────────────────────────────────────────
-# PAGE 2: INTEL MAP
-# ─────────────────────────────────────────────
-elif st.session_state.page == "map":
-    df_borough = load_borough_data()
-    geojson_data = load_geojson()
-
-    col_map, col_info = st.columns([3, 1])
-
-    with col_map:
-        st.markdown('<div class="section-label">London Boroughs — Click to explore</div>', unsafe_allow_html=True)
-
-        m = folium.Map(
-            location=[51.505, -0.09],
-            zoom_start=10,
-            tiles="CartoDB dark_matter",
-            zoom_control=True,
-            scrollWheelZoom=False
-        )
-
-        geojson_features = geojson_data.get("features", []) if geojson_data else []
-        if geojson_features:
-            def style_fn(feature):
-                name = feature["properties"].get("name", feature["properties"].get("NAME", ""))
-                cez = is_cez(name)
-                return {
-                    "fillColor": "#c84b4b" if cez else "#2a2a2a",
-                    "fillOpacity": 0.65 if cez else 0.4,
-                    "color": "#e07070" if cez else "#444",
-                    "weight": 1,
-                }
-
-            def highlight_fn(feature):
-                return {"fillOpacity": 0.9, "weight": 2, "color": "#f0ede6"}
-
-            first_props = geojson_features[0].get("properties", {})
-            tooltip_field = "name" if "name" in first_props else "NAME"
-
-            folium.GeoJson(
-                geojson_data,
-                style_function=style_fn,
-                highlight_function=highlight_fn,
-                tooltip=folium.GeoJsonTooltip(
-                    fields=[tooltip_field],
-                    aliases=["Borough:"],
-                    style="background-color:#1a1a1a;color:#f0ede6;border:1px solid #333;font-family:DM Sans,sans-serif;font-size:13px;"
-                )
-            ).add_to(m)
-
-        map_data = st_folium(m, width=None, height=500, returned_objects=["last_object_clicked_tooltip"])
-
-        if map_data and map_data.get("last_object_clicked_tooltip"):
-            clicked_name = map_data["last_object_clicked_tooltip"]
-            if isinstance(clicked_name, dict):
-                clicked_name = list(clicked_name.values())[0]
-            st.session_state.selected_borough = str(clicked_name).replace("Borough:", "").strip()
-
-    with col_info:
-        st.markdown('<div class="section-label">Borough Intelligence</div>', unsafe_allow_html=True)
-
-        if st.session_state.selected_borough:
-            b = st.session_state.selected_borough
-            cez = is_cez(b)
-            badge = '<span class="badge-cez">CEZ</span>' if cez else '<span class="badge-non">Non-CEZ</span>'
-            st.markdown(f'<div style="font-size:18px;font-weight:500;color:#f0ede6;margin-bottom:12px;">{b}{badge}</div>', unsafe_allow_html=True)
-
-            matches = df_borough[df_borough["Borough"].str.lower().str.contains(b.lower(), na=False)]
-
-            if len(matches) > 0:
-                for _, row in matches.iterrows():
-                    intel = row.get("Intelligence", "")
-                    link = row.get("Link", "")
-                    date = row.get("Update_Date", "")
-                    if pd.notna(intel) and intel:
-                        link_html = f'<br><a href="{link}" target="_blank" class="doc-link">Source →</a>' if pd.notna(link) and link else ""
-                        date_html = f'<div class="intel-date">{date}</div>' if pd.notna(date) and date else ""
-                        card_class = "intel-card" if cez else "intel-card non-cez"
-                        st.markdown(f'<div class="{card_class}"><div class="intel-text">{intel}</div>{date_html}{link_html}</div>', unsafe_allow_html=True)
+# ── Helper: nav button ────────────────────────────────────────────────────────
+def nav_button(label: str, key: str, page_target: str):
+    active = "active" if st.session_state.page == page_target else ""
+    if st.button(label, key=key):
+        if page_target == "raw":
+            import time
+            now = time.time()
+            if now - st.session_state.last_raw_click < 1.2:
+                st.session_state.raw_clicks += 1
             else:
-                st.markdown('<div class="intel-card non-cez"><div class="intel-text" style="color:#555;">No intelligence recorded yet for this borough.</div></div>', unsafe_allow_html=True)
-        else:
-            st.markdown('<div style="color:#444;font-size:13px;margin-top:20px;">Click a borough on the map to view intelligence.</div>', unsafe_allow_html=True)
+                st.session_state.raw_clicks = 1
+            st.session_state.last_raw_click = now
+            if st.session_state.raw_clicks >= 3 and not st.session_state.log_unlocked:
+                st.session_state.show_pw = True
+                st.session_state.raw_clicks = 0
+        st.session_state.page = page_target
+        st.rerun()
 
-        st.markdown('<div class="section-label" style="margin-top:24px;">Legend</div>', unsafe_allow_html=True)
-        st.markdown("""
-        <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
-            <div style="width:12px;height:12px;background:#c84b4b;border-radius:2px;"></div>
-            <span style="font-size:12px;color:#888;">CEZ designated area</span>
-        </div>
-        <div style="display:flex;align-items:center;gap:8px;">
-            <div style="width:12px;height:12px;background:#2a2a2a;border:1px solid #444;border-radius:2px;"></div>
-            <span style="font-size:12px;color:#888;">Non-CEZ borough</span>
-        </div>
-        """, unsafe_allow_html=True)
+# ── Navigation bar ────────────────────────────────────────────────────────────
+st.markdown('<div class="nav-bar">', unsafe_allow_html=True)
+col1, col2, col3, col4, col5 = st.columns([1.4, 1.2, 1.2, 1, 3])
+with col1:
+    st.markdown("**🗺 London Intel**", help="London CEZ Intelligence Dashboard")
+with col2:
+    nav_button("📄 Policy Docs", "btn_policy", "policy")
+with col3:
+    nav_button("🗺️ Intel Map",   "btn_map",    "map")
+with col4:
+    nav_button("📡 Raw Feed",    "btn_raw",    "raw")
+with col5:
+    if st.session_state.log_unlocked:
+        nav_button("🔐 Owner Log", "btn_log", "log")
+st.markdown('</div>', unsafe_allow_html=True)
 
-# ─────────────────────────────────────────────
-# PAGE 3: RAW INTELLIGENCE FEED
-# ─────────────────────────────────────────────
-elif st.session_state.page == "raw":
-    df_raw = load_raw_data()
+# ══════════════════════════════════════════════════════════════════════════════
+# PAGE: Policy Docs
+# ══════════════════════════════════════════════════════════════════════════════
+if st.session_state.page == "policy":
+    st.markdown("### 📄 Policy Documents")
+    st.markdown('<p style="color:#666;font-size:12px;">CEZ policy library — funding, planning & workspace frameworks</p>', unsafe_allow_html=True)
 
-    col_filter, col_feed = st.columns([1, 3])
+    df = load_sheet("Policy_Documents")
+    if df.empty:
+        st.info("No policy documents found. Check your Google Sheet tab name.")
+    else:
+        # Expect columns: Title, Borough, Type, Summary, URL, Tags
+        search = st.text_input("🔍 Search", placeholder="Search policies…", label_visibility="collapsed")
+        if search:
+            mask = df.apply(lambda r: search.lower() in str(r).lower(), axis=1)
+            df = df[mask]
 
-    with col_filter:
-        st.markdown('<div class="section-label">Filter</div>', unsafe_allow_html=True)
-        boroughs_raw = ["All"] + sorted(df_raw["Borough"].dropna().unique().tolist()) if "Borough" in df_raw.columns else ["All"]
-        selected_borough_raw = st.selectbox("Borough", boroughs_raw, label_visibility="visible")
-
-        statuses = ["All"] + sorted(df_raw["Status"].dropna().unique().tolist()) if "Status" in df_raw.columns else ["All"]
-        selected_status = st.selectbox("Status", statuses, label_visibility="visible")
-
-        st.markdown('<div class="stat-card" style="margin-top:20px;"><div class="stat-label">Total items</div><div class="stat-value">{}</div></div>'.format(len(df_raw)), unsafe_allow_html=True)
-
-    with col_feed:
-        st.markdown('<div class="section-label">Unfiltered Raw Feed — Awaiting Review</div>', unsafe_allow_html=True)
-
-        filtered_raw = df_raw.copy()
-        if selected_borough_raw != "All":
-            filtered_raw = filtered_raw[filtered_raw["Borough"] == selected_borough_raw]
-        if selected_status != "All":
-            filtered_raw = filtered_raw[filtered_raw["Status"] == selected_status]
-
-        if len(filtered_raw) == 0:
-            st.markdown('<div style="color:#444;font-size:13px;">No items match the current filter.</div>', unsafe_allow_html=True)
-
-        for _, row in filtered_raw.iterrows():
+        for _, row in df.iterrows():
+            title   = row.get("Title",   "Untitled")
             borough = row.get("Borough", "")
-            title = row.get("Title", "Untitled")
-            snippet = row.get("Snippet", "")
-            source = row.get("Source_URL", "")
-            date = row.get("Scraped_Date", "")
-            status = row.get("Status", "")
+            ptype   = row.get("Type",    "")
+            summary = row.get("Summary", "")
+            url     = row.get("URL",     "")
+            tags    = str(row.get("Tags", "")).split(",") if row.get("Tags") else []
 
-            status_html = f'<span class="status-pending">{status}</span>' if status else ""
-            source_html = f'<a href="{source}" target="_blank" class="doc-link">Source →</a>' if pd.notna(source) and source and source != "https://..." else ""
+            tag_html = "".join(f'<span class="policy-tag">{t.strip()}</span>' for t in tags if t.strip())
+            link_html = f'<a href="{url}" target="_blank" style="color:#e74c3c;font-size:12px;">→ Open document</a>' if url else ""
 
             st.markdown(f"""
-            <div class="raw-card">
-                <div class="raw-title">{title} {status_html}</div>
-                <div class="raw-snippet">{snippet}</div>
-                <div class="raw-meta">{borough} · {date} &nbsp; {source_html}</div>
+            <div class="card">
+              <div class="card-title">{title}</div>
+              <div class="card-meta">{borough} · {ptype}</div>
+              <div class="card-body">{summary}</div>
+              <div style="margin-top:10px">{tag_html}</div>
+              <div style="margin-top:8px">{link_html}</div>
             </div>
             """, unsafe_allow_html=True)
+
+# ══════════════════════════════════════════════════════════════════════════════
+# PAGE: Intel Map
+# ══════════════════════════════════════════════════════════════════════════════
+elif st.session_state.page == "map":
+    st.markdown("### 🗺️ London CEZ Intelligence Map")
+    st.markdown('<p style="color:#666;font-size:12px;">Red = active CEZ zone · Click a marker for borough intel</p>', unsafe_allow_html=True)
+
+    m = folium.Map(
+        location=[51.505, -0.09],
+        zoom_start=11,
+        tiles="CartoDB dark_matter",
+    )
+
+    for borough, data in CEZ_BOROUGHS.items():
+        color  = "#e74c3c" if data["cez"] else "#3498db"
+        radius = 14 if data.get("focus") else 9
+        popup_html = f"""
+        <div style="font-family:Courier New;background:#111;color:#eee;
+                    padding:12px;border-radius:6px;min-width:220px;">
+          <b style="color:{'#e74c3c' if data['cez'] else '#3498db'}">{borough}</b><br>
+          <span style="color:#aaa;font-size:11px">
+            {'🔴 CEZ Active' if data['cez'] else '🔵 Non-CEZ'}
+            {'· ⭐ Priority' if data.get('focus') else ''}
+          </span><br><br>
+          <span style="font-size:12px">{data['intel']}</span>
+        </div>
+        """
+        folium.CircleMarker(
+            location=data["coords"],
+            radius=radius,
+            color=color,
+            fill=True,
+            fill_color=color,
+            fill_opacity=0.7,
+            popup=folium.Popup(popup_html, max_width=280),
+            tooltip=borough,
+        ).add_to(m)
+
+    st_folium(m, width=None, height=540)
+
+    # Borough legend
+    st.markdown("#### Priority Boroughs")
+    cols = st.columns(4)
+    priorities = [(b, d) for b, d in CEZ_BOROUGHS.items() if d.get("focus")]
+    for i, (b, d) in enumerate(priorities):
+        with cols[i % 4]:
+            badge = "🔴 CEZ" if d["cez"] else "🔵 Non-CEZ"
+            st.markdown(f"""
+            <div class="card" style="padding:12px 16px">
+              <div class="card-title" style="font-size:13px">{b}</div>
+              <div class="card-meta">{badge}</div>
+              <div class="card-body" style="font-size:12px">{d['intel'][:80]}…</div>
+            </div>
+            """, unsafe_allow_html=True)
+
+# ══════════════════════════════════════════════════════════════════════════════
+# PAGE: Raw Feed
+# ══════════════════════════════════════════════════════════════════════════════
+elif st.session_state.page == "raw":
+    st.markdown("### 📡 Raw Intelligence Feed")
+    st.markdown('<p style="color:#666;font-size:12px;">Unfiltered field intelligence — boroughs, contacts, spaces</p>', unsafe_allow_html=True)
+
+    df = load_sheet("Raw_Intelligence")
+    if df.empty:
+        st.info("No raw intelligence found. Check your Google Sheet tab name.")
+    else:
+        # Expect columns: Date, Borough, Source, Content, Tags
+        boroughs = ["All"] + sorted(df["Borough"].dropna().unique().tolist()) if "Borough" in df.columns else ["All"]
+        sel = st.selectbox("Filter by borough", boroughs, label_visibility="collapsed")
+        if sel != "All":
+            df = df[df["Borough"] == sel]
+
+        for _, row in df.iterrows():
+            date    = row.get("Date",    "")
+            borough = row.get("Borough", "")
+            source  = row.get("Source",  "")
+            content = row.get("Content", "")
+            tags    = str(row.get("Tags", "")).split(",") if row.get("Tags") else []
+            tag_html = "".join(f'<span class="policy-tag">{t.strip()}</span>' for t in tags if t.strip())
+
+            st.markdown(f"""
+            <div class="card">
+              <div class="card-title">{borough} · {source}</div>
+              <div class="card-meta">{date}</div>
+              <div class="card-body">{content}</div>
+              <div style="margin-top:8px">{tag_html}</div>
+            </div>
+            """, unsafe_allow_html=True)
+
+# ══════════════════════════════════════════════════════════════════════════════
+# PASSWORD GATE — shown as overlay when Raw Feed clicked 3×
+# ══════════════════════════════════════════════════════════════════════════════
+if st.session_state.show_pw and not st.session_state.log_unlocked:
+    st.markdown("---")
+    st.markdown("""
+    <div class="pw-wrap">
+      <div class="pw-title">🔐 RESTRICTED ACCESS</div>
+      <p style="color:#666;font-size:12px;margin-bottom:20px">Owner log detected. Enter passphrase to continue.</p>
+    </div>
+    """, unsafe_allow_html=True)
+
+    pw_input = st.text_input(
+        "Passphrase",
+        type="password",
+        placeholder="enter passphrase…",
+        key="pw_field",
+        label_visibility="collapsed",
+    )
+
+    col_a, col_b = st.columns([1, 1])
+    with col_a:
+        if st.button("Unlock", use_container_width=True):
+            if pw_input.strip().lower() == "secret diary":
+                st.session_state.log_unlocked = True
+                st.session_state.show_pw = False
+                st.session_state.page = "log"
+                st.rerun()
+            else:
+                st.session_state.pw_error = True
+    with col_b:
+        if st.button("Cancel", use_container_width=True):
+            st.session_state.show_pw = False
+            st.rerun()
+
+    if st.session_state.pw_error:
+        st.markdown('<p style="color:#e74c3c;text-align:center;font-size:12px">✗ Incorrect passphrase</p>', unsafe_allow_html=True)
+
+# ══════════════════════════════════════════════════════════════════════════════
+# PAGE: Owner Log (secret diary)
+# ══════════════════════════════════════════════════════════════════════════════
+elif st.session_state.page == "log" and st.session_state.log_unlocked:
+
+    # Header
+    st.markdown("""
+    <div style="border-bottom:1px solid #1e1e1e;padding-bottom:16px;margin-bottom:24px">
+      <div style="color:#e74c3c;font-size:11px;letter-spacing:0.15em;text-transform:uppercase;margin-bottom:4px">
+        🔐 Owner Log — Private
+      </div>
+      <div style="color:#eee;font-size:20px;font-weight:bold">Secret Diary</div>
+      <div style="color:#555;font-size:11px;margin-top:4px">London CEZ Project · Field Journal</div>
+    </div>
+    """, unsafe_allow_html=True)
+
+    df = load_sheet("Secretdiary")   # tab name from your screenshot
+    if df.empty:
+        st.warning("No entries found. Make sure your Google Sheet has a tab named 'Secretdiary' with columns: Date / Type / Content")
+    else:
+        # ── Filters ──
+        col_f1, col_f2 = st.columns([2, 1])
+        with col_f1:
+            search = st.text_input("🔍 Search entries", placeholder="Search…", label_visibility="collapsed")
+        with col_f2:
+            type_opts = ["All"] + sorted(df["Type"].dropna().unique().tolist()) if "Type" in df.columns else ["All"]
+            sel_type  = st.selectbox("Type", type_opts, label_visibility="collapsed")
+
+        # Filter
+        if "Type" in df.columns and sel_type != "All":
+            df = df[df["Type"] == sel_type]
+        if search and not df.empty:
+            mask = df.apply(lambda r: search.lower() in str(r).lower(), axis=1)
+            df   = df[mask]
+
+        # Sort newest first
+        if "Date" in df.columns:
+            df = df.sort_values("Date", ascending=False, na_position="last")
+
+        st.markdown(f'<div style="color:#555;font-size:11px;margin-bottom:16px">{len(df)} entries</div>', unsafe_allow_html=True)
+
+        # ── Badge colour map ──
+        BADGE_CLASS = {
+            "Progress":   "badge-Progress",
+            "Next Steps": "badge-Next Steps",
+            "Meeting":    "badge-Meeting",
+            "Network":    "badge-Network",
+            "Note":       "badge-Note",
+        }
+
+        # ── Render entries ──
+        for _, row in df.iterrows():
+            date    = str(row.get("Date",    "")).strip()
+            etype   = str(row.get("Type",    "Note")).strip()
+            content = str(row.get("Content", "")).strip()
+
+            badge_cls = BADGE_CLASS.get(etype, "badge-Note")
+            badge_html = f'<span class="badge {badge_cls}">{etype.upper()}</span>'
+
+            # Format date nicely if possible
+            try:
+                date_fmt = datetime.strptime(date, "%Y-%m-%d").strftime("%d %b %Y")
+            except Exception:
+                date_fmt = date
+
+            st.markdown(f"""
+            <div class="card" style="border-left:3px solid #c0392b">
+              <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+                {badge_html}
+                <span class="log-date">{date_fmt}</span>
+              </div>
+              <hr class="log-div">
+              <div class="card-body" style="font-size:13px;line-height:1.75">{content}</div>
+            </div>
+            """, unsafe_allow_html=True)
+
+    # Lock button
+    st.markdown("<br>", unsafe_allow_html=True)
+    if st.button("🔒 Lock & Exit", key="lock_btn"):
+        st.session_state.log_unlocked = False
+        st.session_state.page = "policy"
+        st.rerun()
