@@ -204,6 +204,7 @@ def load_borough_data():
     try:
         url = f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/gviz/tq?tqx=out:csv&sheet=Borough_Intelligence"
         df = pd.read_csv(url)
+        df.columns = df.columns.str.strip()
         return df
     except:
         return pd.DataFrame({
@@ -221,6 +222,7 @@ def load_policy_data():
     try:
         url = f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/gviz/tq?tqx=out:csv&sheet=Policy_Documents"
         df = pd.read_csv(url)
+        df.columns = df.columns.str.strip()
         return df
     except:
         return pd.DataFrame({
@@ -237,6 +239,7 @@ def load_raw_data():
     try:
         url = f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/gviz/tq?tqx=out:csv&sheet=Raw_Intelligence"
         df = pd.read_csv(url)
+        df.columns = df.columns.str.strip()
         return df
     except:
         return pd.DataFrame({
@@ -253,6 +256,7 @@ def load_log_data():
     try:
         url = f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/gviz/tq?tqx=out:csv&sheet=Secretdiary"
         df = pd.read_csv(url)
+        df.columns = df.columns.str.strip()
         return df
     except:
         return pd.DataFrame({
@@ -311,13 +315,16 @@ with col_nav:
         if st.button("Raw Feed", key="nav_raw"):
             if st.session_state.secret_unlocked:
                 st.session_state.page = "raw"
+                st.rerun()
             else:
                 st.session_state.raw_click_count += 1
                 if st.session_state.raw_click_count >= 3:
                     st.session_state.show_secret_input = True
                     st.session_state.raw_click_count = 0
+                    st.rerun()
                 else:
                     st.session_state.page = "raw"
+                    st.rerun()
 
 # Secret password input
 if st.session_state.show_secret_input and not st.session_state.secret_unlocked:
