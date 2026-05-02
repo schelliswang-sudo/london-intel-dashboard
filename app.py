@@ -419,13 +419,20 @@ elif st.session_state.page == "map":
             b = st.session_state.selected_borough
             cez = is_cez(b)
             badge = '<span class="badge-cez">CEZ</span>' if cez else '<span class="badge-non">Non-CEZ</span>'
-            st.markdown(f'<div style="font-size:18px;font-weight:500;color:#f0ede6;margin-bottom:12px;">{b}{badge}</div>', unsafe_allow_html=True)
-            matches = df_borough[df_borough["Borough"].str.lower().str.contains(b.lower(), na=False)]
+            st.markdown(f'<div style="font-size:18px;font-weight:500;color:#111;margin-bottom:12px;">{b}{badge}</div>', unsafe_allow_html=True)
+            # Safely find Borough column regardless of case/spaces
+            borough_col = next((c for c in df_borough.columns if c.strip().lower() == "borough"), None)
+            if borough_col is None:
+                st.warning(f"Column 'Borough' not found. Available: {list(df_borough.columns)}")
+                matches = pd.DataFrame()
+            else:
+                matches = df_borough[df_borough[borough_col].str.lower().str.contains(b.lower(), na=False)]
             if len(matches) > 0:
                 for _, row in matches.iterrows():
                     intel = row.get("Intelligence", "")
                     link = row.get("Link", "")
                     date = row.get("Update_Date", "")
+                    if not intel: intel = ""
                     if pd.notna(intel) and intel:
                         link_html = f'<br><a href="{link}" target="_blank" class="doc-link">Source →</a>' if pd.notna(link) and link else ""
                         date_html = f'<div class="intel-date">{date}</div>' if pd.notna(date) and date else ""
