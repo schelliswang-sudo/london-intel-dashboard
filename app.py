@@ -202,7 +202,7 @@ CEZ_BOROUGHS = [
 @st.cache_data(ttl=300)
 def load_borough_data():
     try:
-        url = f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/gviz/tq?tqx=out:csv&sheet=Borough_Intelligence"
+        url = f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/export?format=csv&gid=711933115"
         df = pd.read_csv(url)
         df.columns = df.columns.str.strip()
         return df
@@ -220,7 +220,7 @@ def load_borough_data():
 @st.cache_data(ttl=300)
 def load_policy_data():
     try:
-        url = f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/gviz/tq?tqx=out:csv&sheet=Policy_Documents"
+        url = f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/export?format=csv&gid=0"
         df = pd.read_csv(url)
         df.columns = df.columns.str.strip()
         return df
@@ -237,7 +237,7 @@ def load_policy_data():
 @st.cache_data(ttl=300)
 def load_raw_data():
     try:
-        url = f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/gviz/tq?tqx=out:csv&sheet=Raw_Intelligence"
+        url = f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/export?format=csv&gid=836040610"
         df = pd.read_csv(url)
         df.columns = df.columns.str.strip()
         return df
@@ -254,7 +254,7 @@ def load_raw_data():
 @st.cache_data(ttl=300)
 def load_log_data():
     try:
-        url = f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/gviz/tq?tqx=out:csv&sheet=Secretdiary"
+        url = f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/export?format=csv&gid=2101965641"
         df = pd.read_csv(url)
         df.columns = df.columns.str.strip()
         return df
