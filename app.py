@@ -63,14 +63,15 @@ def load_venues():
     except:
         return pd.DataFrame({"Name":[],"Address":[],"Notes":[]})
 
-@st.cache_data(ttl=300)
+@st.cache_data(ttl=0)
 def load_journal():
     try:
         url = f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/export?format=csv&gid=1803037877"
         df = pd.read_csv(url)
         df.columns = df.columns.str.strip()
         return df
-    except:
+    except Exception as e:
+        st.error(f"Journal load error: {e}")
         return pd.DataFrame({"Date":[],"Type":[],"Update":[],"Feedback":[],"Summary":[],"Goal":[]})
 
 @st.cache_data(ttl=86400)
@@ -222,6 +223,7 @@ elif st.session_state.page == "journal":
 
     if len(df_j) == 0:
         st.markdown('<div style="color:#aaa;font-size:13px;">No entries yet. Add rows to the Journal sheet.</div>', unsafe_allow_html=True)
+        st.write(f"DEBUG: df shape = {df_j.shape}, columns = {list(df_j.columns)}")
     else:
         df_j["_date"] = pd.to_datetime(df_j["Date"], errors="coerce")
         df_j = df_j.dropna(subset=["_date"])
