@@ -56,7 +56,7 @@ def load_policy_data():
 @st.cache_data(ttl=300)
 def load_venues():
     try:
-        url = f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/export?format=csv&gid=1199979058"
+        url = f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/export?format=csv&gid=1803037877"
         df = pd.read_csv(url)
         df.columns = df.columns.str.strip()
         return df
@@ -66,7 +66,7 @@ def load_venues():
 @st.cache_data(ttl=0)
 def load_journal():
     try:
-        url = f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/export?format=csv&gid=1803037877"
+        url = f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/export?format=csv&gid=1199979058"
         df = pd.read_csv(url)
         df.columns = df.columns.str.strip()
         return df
